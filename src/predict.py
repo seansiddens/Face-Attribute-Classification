@@ -10,10 +10,15 @@ import cv2
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
 from tensorflow.keras.preprocessing.image import load_img
 from utils import transform_image
 from model import load_pretrained
+import json
 from mtcnn.mtcnn import MTCNN
+
+
+ATTRIBUTES = "5_o_Clock_Shadow Arched_Eyebrows Attractive Bags_Under_Eyes Bald Bangs Big_Lips Big_Nose Black_Hair Blond_Hair Blurry Brown_Hair Bushy_Eyebrows Chubby Double_Chin Eyeglasses Goatee Gray_Hair Heavy_Makeup High_Cheekbones Male Mouth_Slightly_Open Mustache Narrow_Eyes No_Beard Oval_Face Pale_Skin Pointy_Nose Receding_Hairline Rosy_Cheeks Sideburns Smiling Straight_Hair Wavy_Hair Wearing_Earrings Wearing_Hat Wearing_Lipstick Wearing_Necklace Wearing_Necktie Young".split()
 
 def detect_face(img):
     '''
@@ -157,26 +162,41 @@ def main():
     # Load image
     img = np.array(load_img(filename))
 
+    # Transform image 
+    trans_img = tf.image.resize(img, (224, 224))
+    trans_img = tf.keras.applications.vgg16.preprocess_input(trans_img)
+
+    # Make prediction.
+    preds = model.predict(np.array([trans_img]))
+
+    # Convert output
+    predictions = {}
+    for i, attr in enumerate(ATTRIBUTES):
+        predictions[attr] = float(preds[0, i])
+
+
+    # Pretty print results.
+    print(json.dumps(predictions, indent=4))
+
     # Detect faces using MTCNN face detector
-    faces, bboxes = detect_face(img)
+    # faces, bboxes = detect_face(img)
 
-    if faces is not None:
-        # Preprocess the image and expand its dimension
-        trans_imgs = [transform_image(face, size, preprocessing) for face in faces]
+    # if faces is not None:
+    #     # Preprocess the image and expand its dimension
+    #     trans_imgs = [transform_image(face, size, preprocessing) for face in faces]
 
-        # Predict face attributes
-        preds = model.predict(np.array(trans_imgs))
+    #     # Predict face attributes
+    #     preds = model.predict(np.array(trans_imgs))
 
-        # Convert the output of predict and combine with its corresponding bbox
-        results = convert_attribute(bboxes, preds)
+    #     # Convert the output of predict and combine with its corresponding bbox
+    #     results = convert_attribute(bboxes, preds)
 
-        # Save the output image
-        if args.save_image:
-            img = draw_outputs(img, results)
-            cv2.imwrite('out_{}'.format(filename), img)
-            print('Output image saved at out_{}'.format(filename))
+    #     # Save the output image
+    #     if args.save_image:
+    #         img = draw_outputs(img, results)
+    #         cv2.imwrite('out_{}'.format(filename), img)
+    #         print('Output image saved at out_{}'.format(filename))
 
-    print(results)
 
 if __name__ == "__main__":
     main()

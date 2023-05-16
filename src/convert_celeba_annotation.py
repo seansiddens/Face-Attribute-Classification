@@ -49,7 +49,8 @@ def main():
         classes = re.findall(r'\s?(\s*\S+)', f.readline().rstrip())
 
         # Get the selected class index, we only need 4 classes (eyeglasses, mustache, beard, and hat)
-        selected_classes = [classes.index('Eyeglasses'), classes.index('Mustache'), classes.index('No_Beard'), classes.index('Wearing_Hat')]
+        # selected_classes = [classes.index('Eyeglasses'), classes.index('Mustache'), classes.index('No_Beard'), classes.index('Wearing_Hat')]
+        selected_classes = [classes.index(label)for label in classes] # train on all attributes.
         
         # Create dictionary to save new annotation
         annotations = {}
