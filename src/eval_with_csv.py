@@ -3,10 +3,11 @@ import csv
 ATTRIBUTES = "main_class sub_class img_id 5_o_Clock_Shadow Arched_Eyebrows Attractive Bags_Under_Eyes Bald Bangs Big_Lips Big_Nose Black_Hair Blond_Hair Blurry Brown_Hair Bushy_Eyebrows Chubby Double_Chin Eyeglasses Goatee Gray_Hair Heavy_Makeup High_Cheekbones Male Mouth_Slightly_Open Mustache Narrow_Eyes No_Beard Oval_Face Pale_Skin Pointy_Nose Receding_Hairline Rosy_Cheeks Sideburns Smiling Straight_Hair Wavy_Hair Wearing_Earrings Wearing_Hat Wearing_Lipstick Wearing_Necklace Wearing_Necktie Young".split()
 THRESHOLD = 0.5
 
-def convertToBinaryPred(binaryPredHash, csvFilename, imageNum): 
+def convertToBinaryPred(binaryPredHash, csvFilename): 
     csvFile = open(csvFilename, "r")
     csvReader = csv.reader(csvFile)
 
+    imageNum = 0
     index = 0
     for row in csvReader: 
         #skip the header row
@@ -26,6 +27,8 @@ def convertToBinaryPred(binaryPredHash, csvFilename, imageNum):
                 binaryPredHash[row[2]][i-3] = 1
             else: 
                 binaryPredHash[row[2]][i-3] = 0
+
+    return imageNum
 
 
 def loadTruthLabels(truthLabels, accuracy, indexArray, truthLabelArray): 
@@ -51,10 +54,22 @@ def calculateTotalLabels(pred, accuracy, indexArray, truthLabelArray):
             accuracy[label] += binaryPred[index]
 
 def calculateAccuracy(truth, labelCount, numImages): 
-    return 0
+    acc = {}
+    k = truth.keys()
+    for key in k: 
+        pos = labelCount[key] / numImages 
+        neg = (numImages - labelCount[key]) / numImages 
+        acc[key] = (round(pos, 2), round(neg, 2))
 
-def outputToFile(outputFilename): 
-    return 0
+    return acc 
+def outputToFile(outputFilename, acc): 
+    #output accuracy
+    outputFile = open(outputFilename, "w")
+    for key in acc.keys(): 
+        pos = acc[key][0]
+        neg = acc[key][1]
+        outputString = f"Label: {key} Positive: {pos} Negative: {neg} \n"
+        outputFile.write(outputString)
 
 def main(csvFilename, outputFilename, truth): 
     pred = {} 
@@ -62,20 +77,17 @@ def main(csvFilename, outputFilename, truth):
     indexArray = []
     truthLabelArray = []
     imageNum = 0
+    acc = {}
 
     loadTruthLabels(truth, labelCount, indexArray, truthLabelArray) 
-    convertToBinaryPred(pred, csvFilename, imageNum)
+    imageNum = convertToBinaryPred(pred, csvFilename)
     calculateTotalLabels(pred, labelCount, indexArray, truthLabelArray)
-    calculateAccuracy(truth, labelCount, imageNum)
-    #outputToFile(outputFilename)
+    acc = calculateAccuracy(truth, labelCount, imageNum)
+    print(labelCount)
+    print(acc)
+    outputToFile(outputFilename, acc)
 
-    #output accuracy
-    # outputFile = open(outputFilename, "w")
-    # for label in truthLabelArray: 
-    #     rawAcc = accuracy[label] / truth[label]
-    #     roundedAcc = round(rawAcc, 2)
-    #     outputString = f"Label: {label} had an accuracy of {roundedAcc}\n"
-    #     outputFile.write(outputString)
+    
 
 if __name__ == "__main__":
     #INPUTS TO SCRIPT: 
