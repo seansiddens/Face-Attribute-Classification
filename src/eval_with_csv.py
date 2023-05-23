@@ -18,15 +18,15 @@ def convertToBinaryPred(binaryPredHash, csvFilename):
         imageNum += 1 
         #populate each image_id with a zero vector 
         #assume each image_id is unique 
-        n = len(row)
-        binaryPredHash[row[2]] = [0] * (n-3)
+        n = len(row) #row[0] is the img_id 
+        binaryPredHash[row[0]] = [0] * (n-1)
         
         #check each attribute 
-        for i in range(3, 43): 
+        for i in range(1, 41): 
             if(float(row[i]) > THRESHOLD):
-                binaryPredHash[row[2]][i-3] = 1
+                binaryPredHash[row[0]][i-1] = 1
             else: 
-                binaryPredHash[row[2]][i-3] = 0
+                binaryPredHash[row[0]][i-1] = 0
 
     return imageNum
 
@@ -91,9 +91,9 @@ def main(csvFilename, outputFilename, truth):
 
 if __name__ == "__main__":
     #INPUTS TO SCRIPT: 
-    csvFilename = "prediction-v2.csv"
-    outputFilename = "blonde-women.txt"
-    truth = {"Blond_Hair": 221, "Male": 0}
+    csvFilename = "test.csv"
+    outputFilename = "test.txt"
+    truth = {"Wearing_Hat": 338}
     #----------------------------------------
 
     main(csvFilename, outputFilename, truth)
