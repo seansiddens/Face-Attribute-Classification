@@ -15,7 +15,13 @@ def main():
     test_dataset = test_dataset.map(lambda x: parse_data(x, (224, 224), 'vgg16'))
 
     # Dictionary storing the number of correct predictions made for each attribute.
+    true_positives = dict.fromkeys(ATTRIBUTES, 0)
+    false_positives = dict.fromkeys(ATTRIBUTES, 0)
+    true_negatives = dict.fromkeys(ATTRIBUTES, 0)
+    false_negatives = dict.fromkeys(ATTRIBUTES, 0)
     correct_pred_count = dict.fromkeys(ATTRIBUTES, 0)
+    attribute_counts = dict.fromkeys(ATTRIBUTES, 0)
+
 
     # Determines threshold for prediction to be considered correct
     threshold = 0.5
@@ -25,12 +31,33 @@ def main():
         preds = pretrained_model.predict(np.array([img]))
 
         for i, attr in enumerate(ATTRIBUTES):
+            # Count occurrence of each attribute in testing set.
+            if labels[i] == 1:
+                attribute_counts[attr] += 1
+
             predicted_class = 1 if float(preds[0, i]) >= threshold else 0
+            if predicted_class == 1 and labels[i] == 1:
+                # Model correctly recognized the attribute.
+                true_positives[attr] += 1
+            elif predicted_class == 1 and labels[i] == 0:
+                # Model falsely marked an attribute as present.
+                false_positives[attr] += 1
+            elif predicted_class == 0 and labels[i] == 0:
+                # Model correctly marked attribute as not present.
+                true_negatives[attr] += 1
+            elif predicted_class == 0 and labels[i] == 1:
+                # Model false marked an attribute as not present.
+                false_negatives[attr] += 1
+
             if predicted_class == labels[i]:
                 # Prediction matches true label. 
                 correct_pred_count[attr] += 1
 
+        # Count total number of examples in testing set.
         total_test_examples += 1
+    
+
+    print(json.dumps(attribute_counts, indent=4))
 
     # Calculate accuracy for each attribute
     accuracy = {}
@@ -44,16 +71,16 @@ def main():
     print(f"Total test examples: {total_test_examples}")
     print(json.dumps(accuracy, indent=4))
 
-    # Save to CSV
-    out_file = 'accuracy.csv'
-    with open(out_file, 'w', newline='') as csvfile:
-        writer = csv.writer(csvfile)
+    # # Save to CSV
+    # out_file = 'accuracy.csv'
+    # with open(out_file, 'w', newline='') as csvfile:
+    #     writer = csv.writer(csvfile)
 
-        # Write dict keys as header row
-        writer.writerow(accuracy.keys())
+    #     # Write dict keys as header row
+    #     writer.writerow(accuracy.keys())
 
-        # Write values as next row
-        writer.writerow(accuracy.values())
+    #     # Write values as next row
+    #     writer.writerow(accuracy.values())
 
 if __name__ == "__main__":
     main()
