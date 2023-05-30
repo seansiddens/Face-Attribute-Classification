@@ -19,9 +19,7 @@ def main():
     false_positives = dict.fromkeys(ATTRIBUTES, 0)
     true_negatives = dict.fromkeys(ATTRIBUTES, 0)
     false_negatives = dict.fromkeys(ATTRIBUTES, 0)
-    correct_pred_count = dict.fromkeys(ATTRIBUTES, 0)
     attribute_counts = dict.fromkeys(ATTRIBUTES, 0)
-
 
     # Determines threshold for prediction to be considered correct
     threshold = 0.5
@@ -49,27 +47,27 @@ def main():
                 # Model false marked an attribute as not present.
                 false_negatives[attr] += 1
 
-            if predicted_class == labels[i]:
-                # Prediction matches true label. 
-                correct_pred_count[attr] += 1
-
         # Count total number of examples in testing set.
         total_test_examples += 1
-    
 
-    print(json.dumps(attribute_counts, indent=4))
-
-    # Calculate accuracy for each attribute
-    accuracy = {}
-    for k, v in correct_pred_count.items():
-        accuracy[k] = v / total_test_examples
     
-    # Sort by accuracy
-    accuracy = dict(sorted(accuracy.items(), key=lambda x: x[1], reverse=True)) 
+    true_positives = {k: v / total_test_examples for k, v in true_positives.items()}
+    true_negatives = {k: v / total_test_examples for k, v in true_negatives.items()}
+    false_positives = {k: v / total_test_examples for k, v in false_positives.items()}
+    false_negatives = {k: v / total_test_examples for k, v in false_negatives.items()}
 
     # Pretty print results.
     print(f"Total test examples: {total_test_examples}")
-    print(json.dumps(accuracy, indent=4))
+    print("Attribute counts:")
+    print(json.dumps(attribute_counts))
+    print("True Positives:")
+    print(json.dumps(true_positives, indent=4))
+    print("True negatives:")
+    print(json.dumps(true_negatives, indent=4))
+    print("False Positives:")
+    print(json.dumps(false_positives, indent=4))
+    print("False Negatives:")
+    print(json.dumps(false_negatives, indent=4))
 
     # # Save to CSV
     # out_file = 'accuracy.csv'
