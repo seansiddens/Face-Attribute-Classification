@@ -47,32 +47,44 @@ def other_custom_loss(y_true, y_pred):
 
     return mean_loss 
 
-    
-
-def main():
+# Add a final binary-classification layer which classifies a single attribute as either 
+# present or not present.
+def method_2():
+    # Load pre-trained base model.
     pretrained_model = load_pretrained('models/vgg16.h5')
 
     # Freeze base model's layers.
     for layer in pretrained_model.layers:
         layer.trainable = False
-    
-    # # Add new top layers
+
+    # Add new binary classifier output layer
     x = pretrained_model.output
-    predictions = Dense(2, activation='sigmoid', name='new-output')(x)
+    output_layer = Dense(2, activation='sigmoid', name='new-output')(x)
     
-    new_model = Model(inputs=pretrained_model.input, outputs=predictions)
-    new_model.summary() 
+    # Create new model and print summary. 
+    new_model = Model(inputs=pretrained_model.input, outputs=output_layer)
 
     # Define training metrics
     metrics = define_metrics()
+    new_model.summary() 
 
     # Define the optimizer
     opt = Adam(learning_rate = 1e-4)
 
     # Compile the new model
     new_model.compile(optimizer=opt, metrics=metrics)
+
+    # Prepare training data.
     
-    save_model(new_model, 'models', 'fine-tuned')
+    # save_model(new_model, 'models', 'fine-tuned')
+
+    
+
+def main():
+    method_2()
+    
+
+
 
 
 if __name__ == "__main__":
