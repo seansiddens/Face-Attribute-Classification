@@ -4,6 +4,8 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, Dropout
 from tensorflow.keras.optimizers import Adam
 
+# TODO: Maybe use this video? https://www.youtube.com/watch?v=j-3vuBynnOE 
+
 
 def parse_data(example_proto):
     """
@@ -22,16 +24,23 @@ def parse_data(example_proto):
     """
 
     image_feature_description = {
-        "image/encoded": tf.io.FixedLenFeature([], tf.string),
-        "image/label": tf.io.VarLenFeature(tf.int64),
+        "image": tf.io.FixedLenFeature([], tf.string),
+        "extension": tf.io.FixedLenFeature([], tf.string),
+        "label": tf.io.VarLenFeature(tf.int64),
     }
+    
+    # Parse single example from TFRecord
     x = tf.io.parse_single_example(example_proto, image_feature_description)
-    x_train = tf.image.decode_jpeg(x["image/encoded"])
+    
+    # Decode image extension
+    ext = x["extension"]
+    x_train = tf.image.decode_jpeg(x["image"])
     x_train = tf.image.resize(x_train, (224, 224))
     x_train = tf.keras.applications.vgg16.preprocess_input(x_train)
 
-    y_train = tf.sparse.to_dense(x["image/label"])
-    return x_train, y_train
+    y_train = tf.sparse.to_dense(x["label"])
+
+    return x_train, y_train, ext
 
 
 def load_dataset(path, batch_size):
@@ -111,6 +120,10 @@ def other_custom_loss(y_true, y_pred):
 
     return mean_loss
 
+def new_parse_img(x):
+    label = tf.constant([1, 0], dtype=tf.int64)
+    return x, label
+
 
 # Add a final binary-classification layer which classifies a single attribute as either
 # present or not present.
@@ -141,13 +154,34 @@ def method_2():
 
     # Prepare training data.
     batch_size = 8
-    train_data = load_dataset("src/tfrecords/bald-train.tfrecord", 8)
-    validation_data = load_dataset("src/tfrecords/bald-val.tfrecord", 8)
+    # train_data = load_dataset("src/tfrecords/bald-train.tfrecord", batch_size)
+    # validation_data = load_dataset("src/tfrecords/bald-val.tfrecord", batch_size)
 
     # Train new model
-    new_model.fit(train_data, epochs=10, validation_data=validation_data, verbose=1)
+    # new_model.fit(train_data, epochs=10, validation_data=validation_data, verbose=1)
 
     # save_model(new_model, 'models', 'fine-tuned')
+    # data = tf.data.TFRecordDataset('bald-train.tfrecord')
+    # TODO: Bias dimension error happens somewhere in parse data!
+    # data = data.map(lambda x: parse_data(x))
+
+    # for img, label, ext in data:
+    #     print(img.shape)
+
+    train_data, val_data = tf.keras.utils.image_dataset_from_directory("../new-dataset/bald", labels=None, image_size=(224, 224), validation_split=.2, subset="both", seed=727, batch_size=None)
+    print(f"{train_data.element_spec} \n {val_data.element_spec}")
+    train_data = train_data.map(lambda x: tf.keras.applications.vgg16.preprocess_input(x))
+    train_data = train_data.map(lambda x: new_parse_img(x))
+    train_data = train_data.batch(8)
+    val_data = val_data.map(lambda x: tf.keras.applications.vgg16.preprocess_input(x))
+    val_data = val_data.map(lambda x: new_parse_img(x))
+    val_data = val_data.batch(8)
+
+    new_model.fit(train_data, epochs=10, validation_data=val_data, verbose=1)
+        
+
+    
+
 
 
 def main():
