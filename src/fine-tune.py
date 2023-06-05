@@ -1,10 +1,13 @@
 import tensorflow as tf
-from model import load_pretrained, define_metrics, save_model
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, Dropout
 from tensorflow.keras.optimizers import Adam
+import cv2
+import os
+import numpy as np
+from model import load_pretrained, define_metrics, save_model
 
-# TODO: Maybe use this video? https://www.youtube.com/watch?v=j-3vuBynnOE 
+# TODO: Maybe use this video? https://www.youtube.com/watch?v=j-3vuBynnOE
 
 
 def parse_data(example_proto):
@@ -28,10 +31,10 @@ def parse_data(example_proto):
         "extension": tf.io.FixedLenFeature([], tf.string),
         "label": tf.io.VarLenFeature(tf.int64),
     }
-    
+
     # Parse single example from TFRecord
     x = tf.io.parse_single_example(example_proto, image_feature_description)
-    
+
     # Decode image extension
     ext = x["extension"]
     x_train = tf.image.decode_jpeg(x["image"])
@@ -63,6 +66,28 @@ def load_dataset(path, batch_size):
     dataset = dataset.map(lambda x: parse_data(x))
     dataset = dataset.batch(batch_size)
     return dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+
+
+def create_training_data():
+    path = "../new-dataset/bald"
+    training_data = []
+    for img in os.listdir(path):
+        try:
+            # Read in every image in the folder.
+            img_array = cv2.imread(os.path.join(path, img), cv2.IMREAD_COLOR)
+        except cv2.error as e:
+            print(f"Error: {e}")
+
+        if img_array is None:
+            print("Error reading image")
+            continue
+
+        # Resize and preprocess image.
+        img_array = cv2.resize(img_array, (224, 224))
+        img_array = tf.keras.applications.vgg16.preprocess_input(img_array)
+        label = [1, 0]
+        training_data.append((img_array, label))
+    return training_data
 
 
 # TODO: This function signature might not match what tensorflow expects.
@@ -120,6 +145,7 @@ def other_custom_loss(y_true, y_pred):
 
     return mean_loss
 
+
 def new_parse_img(x):
     label = tf.constant([1, 0], dtype=tf.int64)
     return x, label
@@ -152,36 +178,29 @@ def method_2():
     # Compile the new model
     new_model.compile(optimizer=opt, metrics=metrics, loss="categorical_crossentropy")
 
-    # Prepare training data.
+    # Get image, label pairs
+    data = create_training_data()
+    # Shuffle data
+    np.random.shuffle(data)
+
+    # Split data into a training and validation set.
+    split_index = int(len(data) * 0.1)
+    validation_data = data[:split_index]
+    training_data = data[split_index:]
+
+    # Split into images and labels
+    train_images = np.array([data[0] for data in training_data])
+    train_labels = np.array([data[1] for data in training_data])
+
+    val_images = np.array([data[0] for data in validation_data])
+    val_labels = np.array([data[1] for data in validation_data])
+
+    # Batch data into training sets
     batch_size = 8
-    # train_data = load_dataset("src/tfrecords/bald-train.tfrecord", batch_size)
-    # validation_data = load_dataset("src/tfrecords/bald-val.tfrecord", batch_size)
+    train_dataset = tf.data.Dataset.from_tensor_slices((train_images, train_labels)).batch(batch_size)
+    val_dataset = tf.data.Dataset.from_tensor_slices((val_images, val_labels)).batch(batch_size)
 
-    # Train new model
-    # new_model.fit(train_data, epochs=10, validation_data=validation_data, verbose=1)
-
-    # save_model(new_model, 'models', 'fine-tuned')
-    # data = tf.data.TFRecordDataset('bald-train.tfrecord')
-    # TODO: Bias dimension error happens somewhere in parse data!
-    # data = data.map(lambda x: parse_data(x))
-
-    # for img, label, ext in data:
-    #     print(img.shape)
-
-    train_data, val_data = tf.keras.utils.image_dataset_from_directory("../new-dataset/bald", labels=None, image_size=(224, 224), validation_split=.2, subset="both", seed=727, batch_size=None)
-    print(f"{train_data.element_spec} \n {val_data.element_spec}")
-    train_data = train_data.map(lambda x: tf.keras.applications.vgg16.preprocess_input(x))
-    train_data = train_data.map(lambda x: new_parse_img(x))
-    train_data = train_data.batch(8)
-    val_data = val_data.map(lambda x: tf.keras.applications.vgg16.preprocess_input(x))
-    val_data = val_data.map(lambda x: new_parse_img(x))
-    val_data = val_data.batch(8)
-
-    new_model.fit(train_data, epochs=10, validation_data=val_data, verbose=1)
-        
-
-    
-
+    new_model.fit(train_dataset, epochs=10, validation_data=val_dataset, verbose=1)
 
 
 def main():
